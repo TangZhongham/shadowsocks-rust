@@ -36,6 +36,8 @@ mod common;
 /// shadowsocks version
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+// sslocal 主函数
+
 fn main() {
     let (config, runtime) = {
         let mut app = clap_app!(shadowsocks =>
@@ -523,9 +525,13 @@ fn main() {
         (config, runtime)
     };
 
+    // config 检查完毕，正式启动服务
+
     runtime.block_on(async move {
         let config_path = config.config_path.clone();
 
+        // 新建实例
+    
         let instance = create_local(config).await.expect("create local");
 
         if let Some(config_path) = config_path {

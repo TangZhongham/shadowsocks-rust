@@ -142,6 +142,7 @@ impl PingBalancerBuilder {
         (best_tcp_idx, best_udp_idx)
     }
 
+    // 新建多个 server
     pub async fn build(self) -> io::Result<PingBalancer> {
         assert!(!self.servers.is_empty(), "build PingBalancer without any servers");
 

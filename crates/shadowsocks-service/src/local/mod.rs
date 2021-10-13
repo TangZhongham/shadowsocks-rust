@@ -73,6 +73,7 @@ impl Server {
 
 /// Starts a shadowsocks local server
 pub async fn create(config: Config) -> io::Result<Server> {
+    // 确认 config 是 local 服务
     assert!(config.config_type == ConfigType::Local && !config.local.is_empty());
     assert!(!config.server.is_empty());
 
@@ -94,9 +95,11 @@ pub async fn create(config: Config) -> io::Result<Server> {
             log::warn!("set_nofile {} failed, error: {}", nofile, err);
         }
     }
-
+    
+    // 新建一个 local 服务的 ServiceContext。
     let mut context = ServiceContext::new();
-
+    
+    // 把之前读到的 config 都塞到 context 里
     let mut connect_opts = ConnectOpts {
         #[cfg(any(target_os = "linux", target_os = "android"))]
         fwmark: config.outbound_fwmark,
@@ -141,12 +144,15 @@ pub async fn create(config: Config) -> io::Result<Server> {
 
     assert!(!config.local.is_empty(), "no valid local server configuration");
 
+    // Config 塞完了
+
     let context = Arc::new(context);
 
     let vfut = FuturesUnordered::new();
 
     // Create a service balancer for choosing between multiple servers
     let balancer = {
+        // config 文件构造了一些 enum 字段，暂时用tcp，因为udp有流控而且不稳定
         let mut mode = Mode::TcpOnly;
 
         for local in &config.local {
@@ -167,7 +173,8 @@ pub async fn create(config: Config) -> io::Result<Server> {
         for server in config.server {
             balancer_builder.add_server(server);
         }
-
+        
+        // 构造 balancer
         balancer_builder.build().await?
     };
 
@@ -179,9 +186,10 @@ pub async fn create(config: Config) -> io::Result<Server> {
         vfut.push(report_fut.boxed());
     }
 
+    // 对每个配置文件里的循环构造 balancer
     for local_config in config.local {
         let balancer = balancer.clone();
-
+        // 循环方法
         match local_config.protocol {
             ProtocolType::Socks => {
                 use self::socks::Socks;
@@ -203,7 +211,7 @@ pub async fn create(config: Config) -> io::Result<Server> {
                 if let Some(b) = local_config.udp_addr {
                     server.set_udp_bind_addr(b.clone());
                 }
-
+                // 在这里启动每个 server
                 vfut.push(async move { server.run(&client_addr, balancer).await }.boxed());
             }
             #[cfg(feature = "local-tunnel")]

@@ -73,6 +73,7 @@ impl Socks {
         self.udp_bind_addr = Some(a);
     }
 
+    /// 正式启动（每个）服务
     /// Start serving
     pub async fn run(self, client_config: &ServerAddr, balancer: PingBalancer) -> io::Result<()> {
         let mut vfut = Vec::new();
@@ -92,6 +93,7 @@ impl Socks {
         res
     }
 
+    // 启动 tcp server
     async fn run_tcp_server(&self, client_config: &ServerAddr, balancer: PingBalancer) -> io::Result<()> {
         let listener = match *client_config {
             ServerAddr::SocketAddr(ref saddr) => {
